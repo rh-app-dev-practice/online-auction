@@ -22,6 +22,8 @@ import java.util.UUID;
 @RestController
 public class BidServiceController {
 
+    private int ALLOWED_BID_RETRIES = 100;
+
     private final EmbeddedCacheManager cacheManager;
     private final CounterManager counterManager;
 
@@ -33,9 +35,6 @@ public class BidServiceController {
         this.counterManager = EmbeddedCounterManagerFactory.asCounterManager(cacheManager);
 
 
-        if (!counterManager.isDefined("someCounter")) {
-            counterManager.defineCounter("someCounter", CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG).initialValue(1).storage(Storage.VOLATILE).build());
-        }
     }
 
     @GetMapping("/login")
@@ -46,8 +45,42 @@ public class BidServiceController {
 
     @GetMapping("/hi")
     public String helloWorld(Principal principal, @RequestAttribute String userId) {
-
         return "Hello World " + userId + "    " + principal.getName();
+    }
+
+    /**
+     * Execute the bid against the counter and retry if there is a new price lower than the bid price.
+     * @param counter The StrongCounter for the current auction
+     * @param expected The expected current price
+     * @param updated The new price for the executed bid
+     * @param attempt The attempt number for retries, starting at 0
+     */
+    private void executeBid(StrongCounter counter, long expected, long updated, int attempt) {
+        counter.compareAndSwap(expected, updated).whenComplete((result, throwable) -> {
+            // "result" is the current state of the counter
+            if(result == expected) {
+                // TODO: Send messages
+                //this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
+
+                // Completed Successfully
+                return;
+            }
+            else if(result < updated && attempt < ALLOWED_BID_RETRIES) {
+                // New bid present which is still lower then current bid
+                // Retry up to ALLOWED_BID_RETRIES times, which would be an extreme scenario
+                executeBid(counter, result, updated, attempt+1);
+            }
+            else {
+                // Cannot successfully execute bid
+                // TODO: Send failure message
+                if(attempt >= ALLOWED_BID_RETRIES) {
+                    // Too many retries
+                }
+                else {
+                    // Was outbid during execution of the bid
+                }
+            }
+        });
     }
 
     @PostMapping("/submit")
@@ -56,23 +89,29 @@ public class BidServiceController {
         cacheManager.getCache("testCache").put("testKey", "testValue");
         System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
 
-
-        StrongCounter aCounter = counterManager.getStrongCounter("someCounter");
-
-
-        aCounter.incrementAndGet().whenComplete((result, throwable) -> System.out.println("Counter: " + result));
-
-        UUID id = UUID.randomUUID();
+        UUID bidId = UUID.randomUUID();
         UUID auctionId = UUID.randomUUID();
         UUID listingId = UUID.randomUUID();
         UUID userID = UUID.randomUUID();
-        Integer price = 11;
-        Integer currentPrice = 11;
+        Integer newPrice = 11;
+        Integer currentPrice = 10;
         Date timestamp = new Date();
 
-        Bid bid = new Bid(auctionId, price, currentPrice);
+        if (!counterManager.isDefined(auctionId.toString())) {
+            counterManager.defineCounter(auctionId.toString(), CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG).initialValue(currentPrice).storage(Storage.VOLATILE).build());
+        }
 
-        BidPlacedEvent bidPlacedEvent = new BidPlacedEvent(id, userID, timestamp, bid);
+        StrongCounter counter = counterManager.getStrongCounter(auctionId.toString());
+
+        executeBid(counter, currentPrice, newPrice, 0);
+
+
+        ///////////////////
+
+
+        Bid bid = new Bid(auctionId, newPrice, currentPrice);
+
+        BidPlacedEvent bidPlacedEvent = new BidPlacedEvent(bidId, userID, timestamp, bid);
 
         time = System.currentTimeMillis();
 
@@ -81,35 +120,6 @@ public class BidServiceController {
 
         this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
 
-
-
-/*
-        jmsTemplate.send("example", new MessageCreator() {
-            public Message createMessage(Session session) throws JMSException {
-                TextMessage message = session.createTextMessage(payload);
-                message.setIntProperty("messageCount", count);
-                LOG.info("Sending text message number '{}'", count);
-                return message;
-            }
-        });
-
-
-
-
-
-        jmsTemplate.convertAndSend("example", bidPlacedEvent, new MessagePostProcessor() {
-            @Override
-            public Message postProcessMessage(Message message) throws JMSException {
-
-
-
-//message.setStringProperty("JMS_AMQP_MESSAGE_ANNOTATIONS", "{ \"x-opt-delivery-time\": " + System.currentTimeMillis() + 5000 + "} ");
-
-                message.setLongProperty("x-opt-delivery-time", );
-                return message;
-            }
-        });
-*/
 
         return true;
     }
