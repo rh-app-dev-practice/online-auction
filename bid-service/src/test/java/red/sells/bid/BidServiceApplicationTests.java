@@ -1,4 +1,4 @@
-package red.sells.bidservice;
+package red.sells.bid;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

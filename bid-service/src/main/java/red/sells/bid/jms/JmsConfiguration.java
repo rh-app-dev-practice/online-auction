@@ -1,4 +1,4 @@
-package red.sells.bidservice;
+package red.sells.bid.jms;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.jms.annotation.EnableJms;

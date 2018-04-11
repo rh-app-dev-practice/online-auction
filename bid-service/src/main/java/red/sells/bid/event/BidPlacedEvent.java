@@ -1,9 +1,9 @@
-package red.sells.bidservice;
+package red.sells.bid.event;
 
 import lombok.NonNull;
 import lombok.Value;
+import red.sells.bid.Bid;
 
-import java.io.Serializable;
 import java.util.Date;
 import java.util.UUID;
 

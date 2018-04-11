@@ -1,4 +1,4 @@
-package red.sells.bidservice;
+package red.sells.bid.security;
 
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
 import org.keycloak.adapters.springsecurity.KeycloakSecurityComponents;
@@ -46,5 +46,10 @@ class SecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
                 .antMatchers("/health").anonymous()
                 .antMatchers("/*").hasRole("user")
                 .anyRequest().permitAll();
+    }
+
+    @Bean
+    public AccessTokenFilter authFilter() {
+        return new AccessTokenFilter();
     }
 }

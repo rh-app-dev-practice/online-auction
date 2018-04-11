@@ -1,20 +1,14 @@
-package red.sells.bidservice;
+package red.sells.bid;
 
 import org.infinispan.counter.EmbeddedCounterManagerFactory;
 import org.infinispan.counter.api.*;
 import org.infinispan.manager.EmbeddedCacheManager;
-import org.keycloak.KeycloakPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.jms.core.MessageCreator;
-import org.springframework.jms.core.MessagePostProcessor;
 import org.springframework.web.bind.annotation.*;
+import red.sells.bid.event.BidPlacedEvent;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.Session;
-import javax.jms.TextMessage;
 import java.security.Principal;
 import java.util.Date;
 import java.util.UUID;
@@ -33,8 +27,6 @@ public class BidServiceController {
     public BidServiceController(EmbeddedCacheManager cacheManager) {
         this.cacheManager = cacheManager;
         this.counterManager = EmbeddedCounterManagerFactory.asCounterManager(cacheManager);
-
-
     }
 
     @GetMapping("/login")
@@ -58,22 +50,26 @@ public class BidServiceController {
     private void executeBid(StrongCounter counter, long expected, long updated, int attempt) {
         counter.compareAndSwap(expected, updated).whenComplete((result, throwable) -> {
             // "result" is the current state of the counter
-            if(result == expected) {
+            if(result != null && result == expected) {
                 // TODO: Send messages
                 //this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
 
                 // Completed Successfully
                 return;
             }
-            else if(result < updated && attempt < ALLOWED_BID_RETRIES) {
+            else if(result != null && result < updated && attempt < ALLOWED_BID_RETRIES) {
                 // New bid present which is still lower then current bid
                 // Retry up to ALLOWED_BID_RETRIES times, which would be an extreme scenario
                 executeBid(counter, result, updated, attempt+1);
+                return;
             }
-            else {
+            else { // Failure cases
                 // Cannot successfully execute bid
                 // TODO: Send failure message
-                if(attempt >= ALLOWED_BID_RETRIES) {
+                if(result == null) {
+                    // Handle throwable
+                }
+                else if(attempt >= ALLOWED_BID_RETRIES) {
                     // Too many retries
                 }
                 else {
@@ -84,7 +80,7 @@ public class BidServiceController {
     }
 
     @PostMapping("/submit")
-    public boolean submitBid(@RequestAttribute String userId, @RequestBody String string) {
+    public boolean submitBid(@RequestAttribute String userId, @RequestBody Bid bid) {
 
         cacheManager.getCache("testCache").put("testKey", "testValue");
         System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
@@ -108,8 +104,6 @@ public class BidServiceController {
 
         ///////////////////
 
-
-        Bid bid = new Bid(auctionId, newPrice, currentPrice);
 
         BidPlacedEvent bidPlacedEvent = new BidPlacedEvent(bidId, userID, timestamp, bid);
 
