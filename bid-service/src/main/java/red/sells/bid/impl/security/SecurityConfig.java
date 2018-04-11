@@ -1,4 +1,4 @@
-package red.sells.bid.security;
+package red.sells.bid.impl.security;
 
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
 import org.keycloak.adapters.springsecurity.KeycloakSecurityComponents;
@@ -20,6 +20,27 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 @EnableWebSecurity
 @ComponentScan(basePackageClasses = KeycloakSecurityComponents.class)
 class SecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
+
+    private static final String[] AUTH_WHITELIST = {
+            // -- Actuator
+            "/health", "/health.json",
+            //"/metrics", "/metrics/**",
+            //"/loggers", "/loggers/***",
+            //"/heapdump", "/heapdump/**",
+            //"/threaddump", "/threaddump/**",
+            //"/env", "/env/**",
+            //"/trace", "/trace/**",
+            //"/info", "/info/**",
+            //"/prometheus", "/prometheus/**",
+            //"/jolokia", "/jolokia/**",
+            //"/flyway", "/flyway/**",
+
+            // -- Swagger UI
+            "/swagger-resources/**",
+            "/swagger-ui.html",
+            "/v2/api-docs",
+            "/webjars/**"
+    };
 
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
@@ -43,9 +64,8 @@ class SecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         super.configure(http);
         http.authorizeRequests()
-                .antMatchers("/health").anonymous()
-                .antMatchers("/*").hasRole("user")
-                .anyRequest().permitAll();
+                .antMatchers(AUTH_WHITELIST).permitAll()
+                .antMatchers("/api/**").hasRole("user");
     }
 
     @Bean

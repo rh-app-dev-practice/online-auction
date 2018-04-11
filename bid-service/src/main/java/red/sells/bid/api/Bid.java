@@ -1,4 +1,4 @@
-package red.sells.bid;
+package red.sells.bid.api;
 
 import lombok.*;
 

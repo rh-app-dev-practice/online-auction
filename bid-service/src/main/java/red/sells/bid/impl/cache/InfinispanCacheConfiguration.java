@@ -1,4 +1,4 @@
-package red.sells.bid.cache;
+package red.sells.bid.impl.cache;
 
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;

@@ -1,4 +1,4 @@
-package red.sells.bid;
+package red.sells.bid.impl;
 
 import org.infinispan.counter.EmbeddedCounterManagerFactory;
 import org.infinispan.counter.api.*;
@@ -6,7 +6,9 @@ import org.infinispan.manager.EmbeddedCacheManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
+import red.sells.bid.api.Bid;
+import red.sells.bid.api.BidServiceApi;
 import red.sells.bid.event.BidPlacedEvent;
 
 import java.security.Principal;
@@ -14,9 +16,9 @@ import java.util.Date;
 import java.util.UUID;
 
 @RestController
-public class BidServiceController {
+public class BidService implements BidServiceApi {
 
-    private int ALLOWED_BID_RETRIES = 100;
+    private int ALLOWED_BID_RETRIES = 10;
 
     private final EmbeddedCacheManager cacheManager;
     private final CounterManager counterManager;
@@ -24,19 +26,18 @@ public class BidServiceController {
     @Autowired
     public JmsTemplate jmsTemplate;
 
-    public BidServiceController(EmbeddedCacheManager cacheManager) {
+    public BidService(EmbeddedCacheManager cacheManager) {
         this.cacheManager = cacheManager;
         this.counterManager = EmbeddedCounterManagerFactory.asCounterManager(cacheManager);
     }
 
-    @GetMapping("/login")
+    @Override
     public String helloWorld() {
-
         return "Login ";
     }
 
-    @GetMapping("/hi")
-    public String helloWorld(Principal principal, @RequestAttribute String userId) {
+    @Override
+    public String helloWorld(Principal principal, String userId) {
         return "Hello World " + userId + "    " + principal.getName();
     }
 
@@ -79,15 +80,14 @@ public class BidServiceController {
         });
     }
 
-    @PostMapping("/submit")
-    public boolean submitBid(@RequestAttribute String userId, @RequestBody Bid bid) {
+    @Override
+    public boolean submitBid(String userId, Bid bid) {
 
         cacheManager.getCache("testCache").put("testKey", "testValue");
         System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
 
         UUID bidId = UUID.randomUUID();
         UUID auctionId = UUID.randomUUID();
-        UUID listingId = UUID.randomUUID();
         UUID userID = UUID.randomUUID();
         Integer newPrice = 11;
         Integer currentPrice = 10;

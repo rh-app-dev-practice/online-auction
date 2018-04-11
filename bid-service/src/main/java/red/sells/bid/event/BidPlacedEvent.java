@@ -2,7 +2,7 @@ package red.sells.bid.event;
 
 import lombok.NonNull;
 import lombok.Value;
-import red.sells.bid.Bid;
+import red.sells.bid.api.Bid;
 
 import java.util.Date;
 import java.util.UUID;
