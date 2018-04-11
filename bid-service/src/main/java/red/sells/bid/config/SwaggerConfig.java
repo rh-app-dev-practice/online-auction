@@ -1,4 +1,4 @@
-package red.sells.bid.api.swagger;
+package red.sells.bid.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

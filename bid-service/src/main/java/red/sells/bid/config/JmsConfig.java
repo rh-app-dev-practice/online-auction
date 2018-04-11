@@ -1,4 +1,4 @@
-package red.sells.bid.impl.jms;
+package red.sells.bid.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.jms.annotation.EnableJms;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @EnableJms
-public class JmsConfiguration {
+public class JmsConfig {
     /**
      * Serialize message content to JSON using TextMessage. This avoids using the Java serializer which would tightly
      * couple the microservices, where using Jackson can decouple the message serialization.

@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 
 @RequestMapping("/api")
-public interface BidServiceApi {
+public interface BidApi {
 
     @GetMapping("/login")
     String helloWorld();

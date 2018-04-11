@@ -1,4 +1,4 @@
-package red.sells.bid.impl;
+package red.sells.bid.service;
 
 import org.infinispan.counter.EmbeddedCounterManagerFactory;
 import org.infinispan.counter.api.*;
@@ -8,7 +8,7 @@ import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.web.bind.annotation.RestController;
 import red.sells.bid.api.Bid;
-import red.sells.bid.api.BidServiceApi;
+import red.sells.bid.api.BidApi;
 import red.sells.bid.event.BidPlacedEvent;
 
 import java.security.Principal;
@@ -16,7 +16,7 @@ import java.util.Date;
 import java.util.UUID;
 
 @RestController
-public class BidService implements BidServiceApi {
+public class BidService implements BidApi {
 
     private int ALLOWED_BID_RETRIES = 10;
 
@@ -39,6 +39,48 @@ public class BidService implements BidServiceApi {
     @Override
     public String helloWorld(Principal principal, String userId) {
         return "Hello World " + userId + "    " + principal.getName();
+    }
+
+    @Override
+    public boolean submitBid(String userId, Bid bid) {
+
+        cacheManager.getCache("testCache").put("testKey", "testValue");
+        System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
+
+        UUID bidId = UUID.randomUUID();
+        UUID auctionId = UUID.randomUUID();
+        UUID userID = UUID.randomUUID();
+        Integer newPrice = 11;
+        Integer currentPrice = 10;
+        Date timestamp = new Date();
+
+        if (!counterManager.isDefined(auctionId.toString())) {
+            counterManager.defineCounter(auctionId.toString(), CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG).initialValue(currentPrice).storage(Storage.VOLATILE).build());
+        }
+
+        StrongCounter counter = counterManager.getStrongCounter(auctionId.toString());
+
+        executeBid(counter, currentPrice, newPrice, 0);
+
+
+        ///////////////////
+
+
+        BidPlacedEvent bidPlacedEvent = new BidPlacedEvent(bidId, userID, timestamp, bid);
+
+
+        this.jmsTemplate.setDeliveryPersistent(true);
+        jmsTemplate.setDeliveryDelay(5000);
+
+        this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
+
+
+        return true;
+    }
+
+    @JmsListener(destination = "example")
+    public void processMsg(BidPlacedEvent bidPlacedEvent) {
+        System.out.println("============= Received: " + bidPlacedEvent);
     }
 
     /**
@@ -80,50 +122,6 @@ public class BidService implements BidServiceApi {
         });
     }
 
-    @Override
-    public boolean submitBid(String userId, Bid bid) {
 
-        cacheManager.getCache("testCache").put("testKey", "testValue");
-        System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
-
-        UUID bidId = UUID.randomUUID();
-        UUID auctionId = UUID.randomUUID();
-        UUID userID = UUID.randomUUID();
-        Integer newPrice = 11;
-        Integer currentPrice = 10;
-        Date timestamp = new Date();
-
-        if (!counterManager.isDefined(auctionId.toString())) {
-            counterManager.defineCounter(auctionId.toString(), CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG).initialValue(currentPrice).storage(Storage.VOLATILE).build());
-        }
-
-        StrongCounter counter = counterManager.getStrongCounter(auctionId.toString());
-
-        executeBid(counter, currentPrice, newPrice, 0);
-
-
-        ///////////////////
-
-
-        BidPlacedEvent bidPlacedEvent = new BidPlacedEvent(bidId, userID, timestamp, bid);
-
-        time = System.currentTimeMillis();
-
-        this.jmsTemplate.setDeliveryPersistent(true);
-        jmsTemplate.setDeliveryDelay(5000);
-
-        this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
-
-
-        return true;
-    }
-
-    long time;
-
-    @JmsListener(destination = "example")
-    public void processMsg(BidPlacedEvent bidPlacedEvent) {
-        System.out.println("============= " + (System.currentTimeMillis() - time));
-        System.out.println("============= Received: " + bidPlacedEvent);
-    }
 
 }

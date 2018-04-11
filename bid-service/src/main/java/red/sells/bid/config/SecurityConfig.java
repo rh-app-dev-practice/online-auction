@@ -1,4 +1,4 @@
-package red.sells.bid.impl.security;
+package red.sells.bid.config;
 
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
 import org.keycloak.adapters.springsecurity.KeycloakSecurityComponents;
@@ -15,6 +15,7 @@ import org.springframework.security.core.authority.mapping.SimpleAuthorityMapper
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import red.sells.bid.config.AccessTokenFilter;
 
 @Configuration
 @EnableWebSecurity

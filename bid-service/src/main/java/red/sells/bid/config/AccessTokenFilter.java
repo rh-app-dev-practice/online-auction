@@ -1,4 +1,4 @@
-package red.sells.bid.impl.security;
+package red.sells.bid.config;
 
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.adapters.RefreshableKeycloakSecurityContext;

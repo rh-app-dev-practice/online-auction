@@ -1,4 +1,4 @@
-package red.sells.bid.impl.cache;
+package red.sells.bid.config;
 
 import org.infinispan.configuration.cache.CacheMode;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
@@ -13,7 +13,7 @@ import org.infinispan.configuration.cache.Configuration;
 import java.lang.invoke.MethodHandles;
 
 @org.springframework.context.annotation.Configuration
-public class InfinispanCacheConfiguration {
+public class InfinispanCacheConfig {
 
     private static final String CACHE_NAME = "test";
 
