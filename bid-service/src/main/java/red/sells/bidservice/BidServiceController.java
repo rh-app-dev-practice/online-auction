@@ -3,17 +3,19 @@ package red.sells.bidservice;
 import org.infinispan.counter.EmbeddedCounterManagerFactory;
 import org.infinispan.counter.api.*;
 import org.infinispan.manager.EmbeddedCacheManager;
+import org.keycloak.KeycloakPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
 import org.springframework.jms.core.MessagePostProcessor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+import java.security.Principal;
 import java.util.Date;
 import java.util.UUID;
 
@@ -36,16 +38,20 @@ public class BidServiceController {
         }
     }
 
-    @GetMapping("/")
+    @GetMapping("/login")
     public String helloWorld() {
 
+        return "Login ";
+    }
 
+    @GetMapping("/hi")
+    public String helloWorld(Principal principal, @RequestAttribute String userId) {
 
-        return "Hello World";
+        return "Hello World " + userId + "    " + principal.getName();
     }
 
     @PostMapping("/submit")
-    public boolean submitBid(@RequestBody String string) {
+    public boolean submitBid(@RequestAttribute String userId, @RequestBody String string) {
 
         cacheManager.getCache("testCache").put("testKey", "testValue");
         System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
@@ -69,8 +75,27 @@ public class BidServiceController {
         BidPlacedEvent bidPlacedEvent = new BidPlacedEvent(id, userID, timestamp, bid);
 
         time = System.currentTimeMillis();
+
         this.jmsTemplate.setDeliveryPersistent(true);
-        //this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
+        jmsTemplate.setDeliveryDelay(5000);
+
+        this.jmsTemplate.convertAndSend("example", bidPlacedEvent);
+
+
+
+/*
+        jmsTemplate.send("example", new MessageCreator() {
+            public Message createMessage(Session session) throws JMSException {
+                TextMessage message = session.createTextMessage(payload);
+                message.setIntProperty("messageCount", count);
+                LOG.info("Sending text message number '{}'", count);
+                return message;
+            }
+        });
+
+
+
+
 
         jmsTemplate.convertAndSend("example", bidPlacedEvent, new MessagePostProcessor() {
             @Override
@@ -78,13 +103,13 @@ public class BidServiceController {
 
 
 
-message.setStringProperty("JMS_AMQP_MESSAGE_ANNOTATIONS", "{ \"x-opt-delivery-time\": " + System.currentTimeMillis() + 5000 + "} ");
+//message.setStringProperty("JMS_AMQP_MESSAGE_ANNOTATIONS", "{ \"x-opt-delivery-time\": " + System.currentTimeMillis() + 5000 + "} ");
 
-                //message.setLongProperty("x-opt-delivery-time", );
+                message.setLongProperty("x-opt-delivery-time", );
                 return message;
             }
         });
-
+*/
 
         return true;
     }
