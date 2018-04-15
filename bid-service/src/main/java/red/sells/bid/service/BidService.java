@@ -1,11 +1,16 @@
 package red.sells.bid.service;
 
-import org.infinispan.counter.EmbeddedCounterManagerFactory;
+import org.infinispan.Cache;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.RemoteCounterManagerFactory;
 import org.infinispan.counter.api.*;
-import org.infinispan.manager.EmbeddedCacheManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RestController;
 import red.sells.bid.api.Bid;
 import red.sells.bid.api.BidApi;
@@ -18,17 +23,19 @@ import java.util.UUID;
 @RestController
 public class BidService implements BidApi {
 
+    private static final Logger logger = LoggerFactory.getLogger(BidService.class);
+
     private int ALLOWED_BID_RETRIES = 10;
 
-    private final EmbeddedCacheManager cacheManager;
+    private final RemoteCacheManager cacheManager;
     private final CounterManager counterManager;
 
     @Autowired
     public JmsTemplate jmsTemplate;
 
-    public BidService(EmbeddedCacheManager cacheManager) {
+    public BidService(RemoteCacheManager cacheManager) {
         this.cacheManager = cacheManager;
-        this.counterManager = EmbeddedCounterManagerFactory.asCounterManager(cacheManager);
+        this.counterManager = RemoteCounterManagerFactory.asCounterManager(cacheManager);
     }
 
     @Override
@@ -37,12 +44,38 @@ public class BidService implements BidApi {
     }
 
     @Override
-    public String helloWorld(Principal principal, String userId) {
-        return "Hello World " + userId + "    " + principal.getName();
+    public String helloWorld(Principal principal, @RequestAttribute String userId) {
+
+        UUID auctionId = UUID.randomUUID();
+        Integer currentPrice = 10;
+
+        System.out.println("HERE 1");
+
+        RemoteCache<Object, Object> cache = cacheManager.getCache("default");
+        cache.put(1, "Infinispan");
+
+        System.out.println("HERE 2");
+
+        if (!counterManager.isDefined(auctionId.toString())) {
+            counterManager.defineCounter(auctionId.toString(),
+                    CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG).
+                            initialValue(currentPrice).storage(Storage.PERSISTENT).build());
+        }
+
+        System.out.println("HERE 3");
+
+
+        StrongCounter counter = counterManager.getStrongCounter(auctionId.toString());
+
+        counter.incrementAndGet().whenComplete((r, t) -> {
+            logger.info("Result is: " + r);
+        });
+
+        return "Hello World " + userId + " " + principal.getName();
     }
 
     @Override
-    public boolean submitBid(String userId, Bid bid) {
+    public boolean submitBid(@RequestAttribute String userId, Bid bid) {
 
         cacheManager.getCache("testCache").put("testKey", "testValue");
         System.out.println("Received value from cache: " + cacheManager.getCache("testCache").get("testKey"));
@@ -101,7 +134,7 @@ public class BidService implements BidApi {
                 return;
             }
             else if(result != null && result < updated && attempt < ALLOWED_BID_RETRIES) {
-                // New bid present which is still lower then current bid
+                // New bid present which is still lower than current bid
                 // Retry up to ALLOWED_BID_RETRIES times, which would be an extreme scenario
                 executeBid(counter, result, updated, attempt+1);
                 return;

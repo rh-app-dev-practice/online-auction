@@ -12,8 +12,8 @@ public interface BidApi {
     String helloWorld();
 
     @GetMapping("/hi")
-    String helloWorld(Principal principal, @RequestAttribute String userId);
+    String helloWorld(Principal principal, String userId);
 
     @PostMapping("/submit")
-    boolean submitBid(@RequestAttribute String userId, @RequestBody Bid bid);
+    boolean submitBid(String userId, @RequestBody Bid bid);
 }
